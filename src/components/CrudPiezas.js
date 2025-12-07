@@ -11,7 +11,7 @@ const CrudPiezas = ({ user }) => {
   const [editing, setEditing] = useState(false);
   const [currentPieza, setCurrentPieza] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
-  
+
   const [formData, setFormData] = useState({
     nombre: '',
     descripcion: '',
@@ -52,24 +52,52 @@ const CrudPiezas = ({ user }) => {
   const validateForm = () => {
     const newErrors = {};
 
+    // Validación de nombre
     if (!formData.nombre || formData.nombre.trim().length < 2) {
       newErrors.nombre = 'El nombre debe tener al menos 2 caracteres';
+    } else if (formData.nombre.trim().length > 100) {
+      newErrors.nombre = 'El nombre no puede exceder 100 caracteres';
     }
 
+    // Validación de categoría
     if (!formData.categoria) {
       newErrors.categoria = 'La categoría es obligatoria';
     }
 
-    if (!formData.stock || parseInt(formData.stock) < 0) {
+    // Validación de stock
+    if (!formData.stock || formData.stock === '') {
+      newErrors.stock = 'El stock es obligatorio';
+    } else if (parseInt(formData.stock) < 0) {
       newErrors.stock = 'El stock debe ser un número positivo';
+    } else if (parseInt(formData.stock) > 10000) {
+      newErrors.stock = 'El stock no puede exceder 10,000 unidades';
+    } else if (!/^\d+$/.test(formData.stock)) {
+      newErrors.stock = 'El stock debe ser un número entero';
     }
 
-    if (!formData.precio || parseFloat(formData.precio) <= 0) {
-      newErrors.precio = 'El precio debe ser mayor a 0';
-    }
-
-    if (!formData.minimoStock || parseInt(formData.minimoStock) < 0) {
+    // Validación de stock mínimo
+    if (!formData.minimoStock || formData.minimoStock === '') {
+      newErrors.minimoStock = 'El stock mínimo es obligatorio';
+    } else if (parseInt(formData.minimoStock) < 0) {
       newErrors.minimoStock = 'El stock mínimo debe ser un número positivo';
+    } else if (parseInt(formData.minimoStock) > 1000) {
+      newErrors.minimoStock = 'El stock mínimo no puede exceder 1,000 unidades';
+    } else if (!/^\d+$/.test(formData.minimoStock)) {
+      newErrors.minimoStock = 'El stock mínimo debe ser un número entero';
+    }
+
+    // Validación de precio
+    if (!formData.precio || formData.precio === '') {
+      newErrors.precio = 'El precio es obligatorio';
+    } else if (parseFloat(formData.precio) <= 0) {
+      newErrors.precio = 'El precio debe ser mayor a 0';
+    } else if (parseFloat(formData.precio) > 100000) {
+      newErrors.precio = 'El precio no puede exceder $100,000';
+    }
+
+    // Validación de proveedor
+    if (formData.proveedor && formData.proveedor.trim().length > 100) {
+      newErrors.proveedor = 'El nombre del proveedor no puede exceder 100 caracteres';
     }
 
     setErrors(newErrors);
@@ -102,7 +130,7 @@ const CrudPiezas = ({ user }) => {
 
     let updatedPiezas;
     if (editing && currentPieza) {
-      updatedPiezas = piezas.map(p => 
+      updatedPiezas = piezas.map(p =>
         p.id === currentPieza.id ? nuevaPieza : p
       );
     } else {
@@ -112,11 +140,11 @@ const CrudPiezas = ({ user }) => {
     // Guardar en localStorage
     localStorage.setItem('piezas', JSON.stringify(updatedPiezas));
     setPiezas(updatedPiezas);
-    
+
     // Cerrar modal y resetear
     setShowModal(false);
     resetForm();
-    
+
     // Mostrar mensaje de éxito
     setSuccessMessage(editing ? 'Pieza actualizada correctamente' : 'Pieza agregada correctamente');
     setTimeout(() => setSuccessMessage(''), 3000);
@@ -136,7 +164,7 @@ const CrudPiezas = ({ user }) => {
     const updatedPiezas = piezas.filter(p => p.id !== deleteId);
     localStorage.setItem('piezas', JSON.stringify(updatedPiezas));
     setPiezas(updatedPiezas);
-    
+
     setSuccessMessage('Pieza eliminada correctamente');
     setTimeout(() => setSuccessMessage(''), 3000);
     setShowConfirmModal(false);
@@ -181,7 +209,7 @@ const CrudPiezas = ({ user }) => {
   const getEstadoStock = (stock, minimoStock) => {
     const stockNum = parseInt(stock) || 0;
     const minimoNum = parseInt(minimoStock) || 0;
-    
+
     if (stockNum === 0) {
       return <Badge bg="danger">Agotado</Badge>;
     } else if (stockNum <= minimoNum) {
@@ -518,7 +546,7 @@ const CrudPiezas = ({ user }) => {
           <Modal.Title>Información</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {user.rol !== 'admin' 
+          {user.rol !== 'admin'
             ? 'Solo el administrador puede eliminar piezas'
             : 'Por favor complete todos los campos requeridos correctamente'}
         </Modal.Body>

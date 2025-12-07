@@ -42,10 +42,10 @@ const CrudVentas = ({ user, onClose }) => {
       // Cargar ventas
       const storedVentas = JSON.parse(localStorage.getItem('ventas')) || [];
       setVentas(storedVentas.filter(v => v && v.id));
-      
+
       // Cargar autos
-      const storedAutos = JSON.parse(localStorage.getItem('autos_galeria')) || 
-                         JSON.parse(localStorage.getItem('autos')) || [];
+      const storedAutos = JSON.parse(localStorage.getItem('autos_galeria')) ||
+        JSON.parse(localStorage.getItem('autos')) || [];
       setAutos(storedAutos.filter(a => a && a.id));
     } catch (error) {
       console.error('Error al cargar datos:', error);
@@ -83,26 +83,37 @@ const CrudVentas = ({ user, onClose }) => {
   const validateForm = () => {
     const newErrors = {};
 
+    // Validación de cliente
     if (!formData.cliente || formData.cliente.trim().length < 2) {
-      newErrors.cliente = 'El nombre del cliente es obligatorio';
+      newErrors.cliente = 'El nombre del cliente es obligatorio (mínimo 2 caracteres)';
     }
 
+    // Validación de auto
     if (!formData.autoId) {
       newErrors.autoId = 'Debe seleccionar un auto';
     }
 
+    // Validación de precio
     if (!formData.precio || parseFloat(formData.precio) <= 0) {
       newErrors.precio = 'El precio debe ser mayor a 0';
+    } else if (parseFloat(formData.precio) > 1000000) {
+      newErrors.precio = 'El precio no puede exceder $1,000,000';
     }
 
+    // Validación de fecha
     if (!formData.fecha) {
       newErrors.fecha = 'La fecha es obligatoria';
+    } else {
+      const fechaVenta = new Date(formData.fecha);
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+
+      if (fechaVenta > hoy) {
+        newErrors.fecha = 'La fecha no puede ser futura';
+      }
     }
 
-    if (!formData.estado) {
-      newErrors.estado = 'El estado es obligatorio';
-    }
-
+    // Validación de método de pago
     if (!formData.metodoPago) {
       newErrors.metodoPago = 'El método de pago es obligatorio';
     }
@@ -110,7 +121,6 @@ const CrudVentas = ({ user, onClose }) => {
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
   const handleSave = () => {
     if (!validateForm()) {
       setErrors({ general: 'Por favor complete todos los campos requeridos' });
@@ -141,10 +151,10 @@ const CrudVentas = ({ user, onClose }) => {
 
     setVentas(updatedVentas);
     localStorage.setItem('ventas', JSON.stringify(updatedVentas));
-    
+
     setShowModal(false);
     resetForm();
-    
+
     setSuccessMessage(editing ? 'Venta actualizada correctamente' : 'Venta registrada correctamente');
     setTimeout(() => setSuccessMessage(''), 3000);
   };
@@ -163,7 +173,7 @@ const CrudVentas = ({ user, onClose }) => {
     const updatedVentas = ventas.filter(v => v && v.id !== currentVenta.id);
     setVentas(updatedVentas);
     localStorage.setItem('ventas', JSON.stringify(updatedVentas));
-    
+
     setSuccessMessage('Venta eliminada correctamente');
     setTimeout(() => setSuccessMessage(''), 3000);
     setShowConfirmModal(false);
@@ -245,8 +255,8 @@ const CrudVentas = ({ user, onClose }) => {
       width: 120,
       renderCell: (item) => {
         const estado = item.estado || 'pendiente';
-        const bgColor = estado === 'completada' ? 'success' : 
-                       estado === 'cancelada' ? 'danger' : 'warning';
+        const bgColor = estado === 'completada' ? 'success' :
+          estado === 'cancelada' ? 'danger' : 'warning';
         return <span className={`badge bg-${bgColor}`}>{estado}</span>;
       }
     },

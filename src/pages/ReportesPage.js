@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Table, Button, Modal } from 'react-bootstrap';
+import { Card, Row, Col, Table, Button, Tabs, Tab } from 'react-bootstrap';
+import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 import ExportExcel from '../components/ExportExcel';
 import NavbarUser from '../components/NavbarUser';
+import * as XLSX from 'xlsx';
 
 const ReportesPage = ({ user, goBack, goToHome, onLogout }) => {
   const [ventas, setVentas] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
   const [piezas, setPiezas] = useState([]);
-  const [showExportModal, setShowExportModal] = useState(false);
-  const [exportData, setExportData] = useState([]);
-  const [exportColumns, setExportColumns] = useState([]);
+  const [ventasPiezas, setVentasPiezas] = useState([]);
+  const [activeTab, setActiveTab] = useState('empleados');
 
   useEffect(() => {
     cargarDatos();
@@ -20,20 +21,62 @@ const ReportesPage = ({ user, goBack, goToHome, onLogout }) => {
       const ventasData = JSON.parse(localStorage.getItem('ventas')) || [];
       const usuariosData = JSON.parse(localStorage.getItem('users')) || [];
       const piezasData = JSON.parse(localStorage.getItem('piezas')) || [];
+      const ventasPiezasData = JSON.parse(localStorage.getItem('ventasPiezas')) || [];
 
       setVentas(ventasData);
       setUsuarios(usuariosData);
       setPiezas(piezasData);
+      setVentasPiezas(ventasPiezasData);
     } catch (error) {
       console.error('Error al cargar datos:', error);
     }
   };
 
-  // Calcular ventas por mes
-  const calcularVentasPorMes = () => {
+  // 1. EMPLEADOS QUE MÁS VEHÍCULOS HAN VENDIDO
+  const calcularEmpleadosTop = () => {
+    const empleados = usuarios.filter(u => u.rol === 'empleado' || u.rol === 'admin');
+    
+    const ventasPorEmpleado = empleados.map(empleado => {
+      const ventasEmpleado = ventas.filter(v => v.vendedor === empleado.nombre);
+      const totalVentas = ventasEmpleado.reduce((sum, v) => sum + (parseFloat(v.precio) || 0), 0);
+      
+      return {
+        nombre: empleado.nombre,
+        ventas: ventasEmpleado.length,
+        totalVentas: totalVentas,
+        comisionTotal: ventasEmpleado.reduce((sum, v) => sum + (parseFloat(v.comision) || 0), 0)
+      };
+    });
+
+    return ventasPorEmpleado.sort((a, b) => b.ventas - a.ventas).slice(0, 10);
+  };
+
+  // 2. PIEZAS MÁS VENDIDAS
+  const calcularPiezasTop = () => {
+    // Agrupar ventas de piezas por nombre
+    const ventasAgrupadas = {};
+    
+    ventasPiezas.forEach(venta => {
+      const nombre = venta.nombre;
+      if (!ventasAgrupadas[nombre]) {
+        ventasAgrupadas[nombre] = {
+          nombre: nombre,
+          cantidad: 0,
+          total: 0
+        };
+      }
+      ventasAgrupadas[nombre].cantidad += venta.cantidad;
+      ventasAgrupadas[nombre].total += venta.total || 0;
+    });
+
+    return Object.values(ventasAgrupadas).sort((a, b) => b.cantidad - a.cantidad).slice(0, 10);
+  };
+
+  // 3. VENTAS DEL AÑO POR MES
+  const calcularVentasAnuales = () => {
     const meses = [
-      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+      'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
     ];
 
     const ventasPorMes = meses.map((mes, index) => {
@@ -43,9 +86,7 @@ const ReportesPage = ({ user, goBack, goToHome, onLogout }) => {
         return fecha.getMonth() === index;
       });
 
-      const total = ventasMes.reduce((sum, venta) => {
-        return sum + (parseFloat(venta.precio) || 0);
-      }, 0);
+      const total = ventasMes.reduce((sum, venta) => sum + (parseFloat(venta.precio) || 0), 0);
 
       return {
         mes,
@@ -58,67 +99,13 @@ const ReportesPage = ({ user, goBack, goToHome, onLogout }) => {
     return ventasPorMes;
   };
 
-  // Calcular ventas por vendedor (empleados del mes)
-  const calcularEmpleadosDelMes = () => {
-    const ventasCompletadas = ventas.filter(v => v.estado === 'completada');
-    const ventasPorVendedor = {};
-
-    ventasCompletadas.forEach(venta => {
-      const vendedor = venta.vendedor || 'Sin nombre';
-      if (!ventasPorVendedor[vendedor]) {
-        ventasPorVendedor[vendedor] = {
-          cantidad: 0,
-          total: 0
-        };
-      }
-      ventasPorVendedor[vendedor].cantidad += 1;
-      ventasPorVendedor[vendedor].total += parseFloat(venta.precio) || 0;
-    });
-
-    return Object.entries(ventasPorVendedor)
-      .map(([vendedor, datos]) => ({
-        vendedor,
-        cantidad: datos.cantidad,
-        total: datos.total
-      }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 10); // Top 10
-  };
-
-  // Calcular ventas por auto
-  const calcularVentasPorAuto = () => {
-    const ventasPorAuto = {};
-
-    ventas.forEach(venta => {
-      const auto = venta.autoNombre || 'Sin nombre';
-      if (!ventasPorAuto[auto]) {
-        ventasPorAuto[auto] = {
-          cantidad: 0,
-          total: 0
-        };
-      }
-      ventasPorAuto[auto].cantidad += 1;
-      ventasPorAuto[auto].total += parseFloat(venta.precio) || 0;
-    });
-
-    return Object.entries(ventasPorAuto)
-      .map(([auto, datos]) => ({
-        auto,
-        cantidad: datos.cantidad,
-        total: datos.total
-      }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 10);
-  };
-
-  // Calcular estadísticas generales
+  // 4. ESTADÍSTICAS GENERALES
   const calcularEstadisticas = () => {
     const ventasCompletadas = ventas.filter(v => v.estado === 'completada');
     const totalVentas = ventasCompletadas.length;
     const totalIngresos = ventasCompletadas.reduce((sum, v) => sum + (parseFloat(v.precio) || 0), 0);
     const promedioVenta = totalVentas > 0 ? totalIngresos / totalVentas : 0;
     
-    // Obtener mes actual
     const hoy = new Date();
     const mesActual = hoy.getMonth();
     const ventasMesActual = ventasCompletadas.filter(v => {
@@ -136,79 +123,56 @@ const ReportesPage = ({ user, goBack, goToHome, onLogout }) => {
     };
   };
 
-  const handleExportPersonalizado = (dataType) => {
-    let dataToExport = [];
-    let columns = [];
-    let filename = '';
+  // COLORS PARA GRÁFICAS
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#8DD1E1', '#A4DE6C', '#D0ED57'];
 
-    switch (dataType) {
-      case 'ventas':
-        dataToExport = ventas;
-        columns = ['ID', 'Cliente', 'Auto', 'Precio', 'Fecha', 'Estado', 'Vendedor', 'Método de Pago'];
-        filename = 'reporte_ventas';
-        break;
-      case 'empleados':
-        dataToExport = calcularEmpleadosDelMes();
-        columns = ['Vendedor', 'Cantidad de Ventas', 'Total Vendido'];
-        filename = 'empleados_del_mes';
-        break;
-      case 'autos':
-        dataToExport = calcularVentasPorAuto();
-        columns = ['Auto', 'Cantidad Vendida', 'Total Vendido'];
-        filename = 'ventas_por_auto';
-        break;
-      default:
-        return;
-    }
+  // FUNCIONES DE EXPORTACIÓN
+  const exportarEmpleadosExcel = () => {
+    const data = calcularEmpleadosTop().map((emp, index) => ({
+      'Posición': index + 1,
+      'Nombre': emp.nombre,
+      'Ventas Realizadas': emp.ventas,
+      'Total Vendido': emp.totalVentas,
+      'Comisión Total': emp.comisionTotal
+    }));
 
-    setExportData(dataToExport);
-    setExportColumns(columns);
-    setShowExportModal(true);
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Empleados_Top");
+    XLSX.writeFile(wb, 'empleados_top.xlsx');
   };
 
-  const renderBarChart = (data, title, valueKey = 'total', labelKey = 'mes', height = 300) => {
-    if (data.length === 0) {
-      return (
-        <div className="text-center py-4">
-          <p className="text-muted">No hay datos para mostrar</p>
-        </div>
-      );
-    }
+  const exportarPiezasExcel = () => {
+    const data = calcularPiezasTop().map((pieza, index) => ({
+      'Posición': index + 1,
+      'Nombre': pieza.nombre,
+      'Cantidad Vendida': pieza.cantidad,
+      'Total Ventas': pieza.total
+    }));
 
-    const maxValue = Math.max(...data.map(item => item[valueKey]));
-    
-    return (
-      <div className="simple-bar-chart" style={{ height: `${height}px` }}>
-        <h6 className="mb-3 text-dark">{title}</h6>
-        {data.map((item, index) => (
-          <div key={index} className="bar-item mb-3">
-            <div className="d-flex justify-content-between mb-1">
-              <span className="bar-label text-dark">{item[labelKey]}</span>
-              <span className="bar-value text-dark">
-                {valueKey === 'total' ? `$${item[valueKey].toLocaleString()}` : item[valueKey]}
-              </span>
-            </div>
-            <div className="bar-container bg-light" style={{ height: '20px', borderRadius: '4px' }}>
-              <div 
-                className="bar-fill" 
-                style={{ 
-                  width: `${(item[valueKey] / maxValue) * 100}%`,
-                  backgroundColor: item.color || '#3498db',
-                  height: '100%',
-                  borderRadius: '4px'
-                }}
-              ></div>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Piezas_Top");
+    XLSX.writeFile(wb, 'piezas_top.xlsx');
   };
 
+  const exportarVentasAnualesExcel = () => {
+    const data = calcularVentasAnuales().map(mes => ({
+      'Mes': mes.mes,
+      'Cantidad de Ventas': mes.cantidad,
+      'Total Vendido': mes.total
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Ventas_Anuales");
+    XLSX.writeFile(wb, 'ventas_anuales.xlsx');
+  };
+
+  const empleadosTop = calcularEmpleadosTop();
+  const piezasTop = calcularPiezasTop();
+  const ventasAnuales = calcularVentasAnuales();
   const estadisticas = calcularEstadisticas();
-  const ventasPorMes = calcularVentasPorMes();
-  const empleadosDelMes = calcularEmpleadosDelMes();
-  const ventasPorAuto = calcularVentasPorAuto();
 
   return (
     <>
@@ -228,16 +192,10 @@ const ReportesPage = ({ user, goBack, goToHome, onLogout }) => {
             <h1 className="text-dark">Reportes y Estadísticas</h1>
             <p className="text-muted">Análisis detallado de ventas y desempeño</p>
           </div>
-          <div className="d-flex gap-2">
-            <Button variant="success" onClick={() => handleExportPersonalizado('ventas')}>
-              <i className="bi bi-download me-2"></i>
-              Exportar Ventas
-            </Button>
-            <Button variant="secondary" onClick={goBack}>
-              <i className="bi bi-arrow-left me-2"></i>
-              Volver
-            </Button>
-          </div>
+          <Button variant="secondary" onClick={goBack}>
+            <i className="bi bi-arrow-left me-2"></i>
+            Volver
+          </Button>
         </div>
 
         {/* Estadísticas generales */}
@@ -276,216 +234,188 @@ const ReportesPage = ({ user, goBack, goToHome, onLogout }) => {
           </Col>
         </Row>
 
-        {/* Gráficas y tablas */}
-        <Row className="mb-5">
-          <Col md={6}>
-            <Card className="border-0 shadow-sm h-100">
-              <Card.Header className="bg-primary text-white">
-                <h5 className="mb-0">Ventas por Mes</h5>
+        {/* Tabs para diferentes reportes */}
+        <Tabs
+          activeKey={activeTab}
+          onSelect={(k) => setActiveTab(k)}
+          className="mb-4"
+        >
+          <Tab eventKey="empleados" title="Top Empleados">
+            <Card className="border-0 shadow-sm mt-3">
+              <Card.Header className="bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 className="mb-0">Top 10 Empleados con Más Ventas</h5>
+                <Button variant="light" size="sm" onClick={exportarEmpleadosExcel}>
+                  <i className="bi bi-download me-2"></i>
+                  Exportar Excel
+                </Button>
               </Card.Header>
               <Card.Body>
-                {renderBarChart(ventasPorMes, 'Ingresos Mensuales', 'total', 'mes')}
-                <Button 
-                  variant="outline-primary" 
-                  size="sm" 
-                  onClick={() => handleExportPersonalizado('ventas')}
-                  className="mt-3"
-                >
-                  <i className="bi bi-download me-2"></i>
-                  Exportar Datos
-                </Button>
+                <Row>
+                  <Col md={6}>
+                    <div style={{ width: '100%', height: 400 }}>
+                      <ResponsiveContainer>
+                        <BarChart data={empleadosTop}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="nombre" />
+                          <YAxis />
+                          <Tooltip />
+                          <Legend />
+                          <Bar dataKey="ventas" name="Ventas Realizadas" fill="#8884d8" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </Col>
+                  <Col md={6}>
+                    <div className="table-responsive">
+                      <Table striped hover>
+                        <thead>
+                          <tr>
+                            <th>#</th>
+                            <th>Nombre</th>
+                            <th>Ventas</th>
+                            <th>Total Vendido</th>
+                            <th>Comisión Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {empleadosTop.map((empleado, index) => (
+                            <tr key={index}>
+                              <td>{index + 1}</td>
+                              <td>{empleado.nombre}</td>
+                              <td>{empleado.ventas}</td>
+                              <td>${empleado.totalVentas.toLocaleString()}</td>
+                              <td>${empleado.comisionTotal.toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </Table>
+                    </div>
+                  </Col>
+                </Row>
               </Card.Body>
             </Card>
-          </Col>
-          <Col md={6}>
-            <Card className="border-0 shadow-sm h-100">
-              <Card.Header className="bg-success text-white">
-                <h5 className="mb-0">Top 10 Empleados del Mes</h5>
-              </Card.Header>
-              <Card.Body>
-                <div className="table-responsive">
-                  <Table striped hover size="sm">
-                    <thead>
-                      <tr>
-                        <th>#</th>
-                        <th>Vendedor</th>
-                        <th>Ventas</th>
-                        <th>Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {empleadosDelMes.map((empleado, index) => (
-                        <tr key={index}>
-                          <td>{index + 1}</td>
-                          <td>{empleado.vendedor}</td>
-                          <td>{empleado.cantidad}</td>
-                          <td>${empleado.total.toLocaleString()}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </Table>
-                </div>
-                <Button 
-                  variant="outline-success" 
-                  size="sm" 
-                  onClick={() => handleExportPersonalizado('empleados')}
-                  className="mt-2"
-                >
-                  <i className="bi bi-download me-2"></i>
-                  Exportar Ranking
-                </Button>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
+          </Tab>
 
-        <Row className="mb-5">
-          <Col md={6}>
-            <Card className="border-0 shadow-sm h-100">
-              <Card.Header className="bg-warning text-white">
-                <h5 className="mb-0">Autos Más Vendidos</h5>
-              </Card.Header>
-              <Card.Body>
-                <div className="table-responsive">
-                  <Table striped hover size="sm">
-                    <thead>
-                      <tr>
-                        <th>#</th>
-                        <th>Auto</th>
-                        <th>Unidades</th>
-                        <th>Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {ventasPorAuto.map((auto, index) => (
-                        <tr key={index}>
-                          <td>{index + 1}</td>
-                          <td>{auto.auto}</td>
-                          <td>{auto.cantidad}</td>
-                          <td>${auto.total.toLocaleString()}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </Table>
-                </div>
-                <Button 
-                  variant="outline-warning" 
-                  size="sm" 
-                  onClick={() => handleExportPersonalizado('autos')}
-                  className="mt-2"
-                >
+          <Tab eventKey="piezas" title="Piezas Más Vendidas">
+            <Card className="border-0 shadow-sm mt-3">
+              <Card.Header className="bg-success text-white d-flex justify-content-between align-items-center">
+                <h5 className="mb-0">Top 10 Piezas Más Vendidas</h5>
+                <Button variant="light" size="sm" onClick={exportarPiezasExcel}>
                   <i className="bi bi-download me-2"></i>
-                  Exportar Lista
+                  Exportar Excel
                 </Button>
-              </Card.Body>
-            </Card>
-          </Col>
-          <Col md={6}>
-            <Card className="border-0 shadow-sm h-100">
-              <Card.Header className="bg-info text-white">
-                <h5 className="mb-0">Resumen Detallado</h5>
               </Card.Header>
               <Card.Body>
-                <div className="mb-3">
-                  <h6>Estado de Ventas:</h6>
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>Completadas:</span>
-                    <span className="badge bg-success">
-                      {ventas.filter(v => v.estado === 'completada').length}
-                    </span>
-                  </div>
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>Pendientes:</span>
-                    <span className="badge bg-warning">
-                      {ventas.filter(v => v.estado === 'pendiente').length}
-                    </span>
-                  </div>
-                  <div className="d-flex justify-content-between">
-                    <span>Canceladas:</span>
-                    <span className="badge bg-danger">
-                      {ventas.filter(v => v.estado === 'cancelada').length}
-                    </span>
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <h6>Métodos de Pago:</h6>
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>Efectivo:</span>
-                    <span>{ventas.filter(v => v.metodoPago === 'efectivo').length}</span>
-                  </div>
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>Tarjeta:</span>
-                    <span>{ventas.filter(v => v.metodoPago === 'tarjeta').length}</span>
-                  </div>
-                  <div className="d-flex justify-content-between">
-                    <span>Transferencia:</span>
-                    <span>{ventas.filter(v => v.metodoPago === 'transferencia').length}</span>
-                  </div>
-                </div>
+                <Row>
+                  <Col md={6}>
+                    <div style={{ width: '100%', height: 400 }}>
+                      <ResponsiveContainer>
+                        <PieChart>
+                          <Pie
+                            data={piezasTop}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={(entry) => `${entry.nombre}: ${entry.cantidad}`}
+                            outerRadius={150}
+                            fill="#8884d8"
+                            dataKey="cantidad"
+                          >
+                            {piezasTop.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </Col>
+                  <Col md={6}>
+                    <div className="table-responsive">
+                      <Table striped hover>
+                        <thead>
+                          <tr>
+                            <th>#</th>
+                            <th>Pieza</th>
+                            <th>Cantidad Vendida</th>
+                            <th>Total Ventas</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {piezasTop.map((pieza, index) => (
+                            <tr key={index}>
+                              <td>{index + 1}</td>
+                              <td>{pieza.nombre}</td>
+                              <td>{pieza.cantidad}</td>
+                              <td>${pieza.total.toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </Table>
+                    </div>
+                  </Col>
+                </Row>
               </Card.Body>
             </Card>
-          </Col>
-        </Row>
+          </Tab>
+
+          <Tab eventKey="ventas" title="Ventas Anuales">
+            <Card className="border-0 shadow-sm mt-3">
+              <Card.Header className="bg-warning text-white d-flex justify-content-between align-items-center">
+                <h5 className="mb-0">Ventas del Año por Mes</h5>
+                <Button variant="light" size="sm" onClick={exportarVentasAnualesExcel}>
+                  <i className="bi bi-download me-2"></i>
+                  Exportar Excel
+                </Button>
+              </Card.Header>
+              <Card.Body>
+                <Row>
+                  <Col md={6}>
+                    <div style={{ width: '100%', height: 400 }}>
+                      <ResponsiveContainer>
+                        <LineChart data={ventasAnuales}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="mes" />
+                          <YAxis />
+                          <Tooltip />
+                          <Legend />
+                          <Line type="monotone" dataKey="total" stroke="#8884d8" activeDot={{ r: 8 }} />
+                          <Line type="monotone" dataKey="cantidad" stroke="#82ca9d" />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </Col>
+                  <Col md={6}>
+                    <div className="table-responsive">
+                      <Table striped hover>
+                        <thead>
+                          <tr>
+                            <th>Mes</th>
+                            <th>Cantidad de Ventas</th>
+                            <th>Total Vendido</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {ventasAnuales.map((mes, index) => (
+                            <tr key={index}>
+                              <td>{mes.mes}</td>
+                              <td>{mes.cantidad}</td>
+                              <td>${mes.total.toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </Table>
+                    </div>
+                  </Col>
+                </Row>
+              </Card.Body>
+            </Card>
+          </Tab>
+        </Tabs>
       </div>
-
-      {/* Modal para exportación personalizada */}
-      <Modal show={showExportModal} onHide={() => setShowExportModal(false)} size="lg">
-        <Modal.Header closeButton>
-          <Modal.Title>Exportar Datos</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <div className="mb-3">
-            <p>Se exportarán {exportData.length} registros con las siguientes columnas:</p>
-            <ul>
-              {exportColumns.map((col, index) => (
-                <li key={index}>{col}</li>
-              ))}
-            </ul>
-            
-            {exportData.length > 0 && (
-              <div className="table-responsive mt-3" style={{ maxHeight: '300px' }}>
-                <Table striped hover size="sm">
-                  <thead>
-                    <tr>
-                      {exportColumns.map((col, index) => (
-                        <th key={index}>{col}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {exportData.slice(0, 5).map((item, index) => (
-                      <tr key={index}>
-                        {exportColumns.map((col, colIndex) => (
-                          <td key={colIndex}>
-                            {item[col] || item[col.toLowerCase()] || '-'}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-                {exportData.length > 5 && (
-                  <p className="text-muted text-center">
-                    Mostrando 5 de {exportData.length} registros
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowExportModal(false)}>
-            Cancelar
-          </Button>
-          <ExportExcel
-            data={exportData}
-            filename="exportacion_personalizada"
-            sheetName="Datos"
-            buttonText="Exportar a Excel"
-          />
-        </Modal.Footer>
-      </Modal>
     </>
   );
 };
+
 export default ReportesPage;

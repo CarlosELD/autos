@@ -148,20 +148,6 @@ export default function NavbarUser({
                 </button>
               </li>
             )}
-            
-            {/* Temporadas - solo admin */}
-            {user && user.rol === 'admin' && (
-              <li className="nav-item">
-                <button 
-                  className="nav-link btn btn-link text-success"
-                  onClick={goToTemporada}
-                  style={{ background: 'none', border: 'none' }}
-                >
-                  <i className="bi bi-calendar-event me-1"></i>
-                  Temporadas
-                </button>
-              </li>
-            )}
           </ul>
 
           <div className="d-flex align-items-center gap-2">

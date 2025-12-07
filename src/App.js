@@ -1,15 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import HomePage from './pages/HomePage';
-import GaleriaPage from './pages/GaleriaPage';
-import ContactoPage from './pages/ContactoPage';
-import AdminDashboard from './pages/AdminDashboard';
-import ReportesPage from './pages/ReportesPage';
-import PiezasPage from './pages/PiezasPage';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
+import { Spinner } from 'react-bootstrap';
+import 'bootstrap/dist/css/bootstrap.min.css';
 import './styles/unified.css';
+import './styles/navbar.css';
+// Componentes lazy para mejor rendimiento
+const HomePage = lazy(() => import('./pages/HomePage'));
+const GaleriaPage = lazy(() => import('./pages/GaleriaPage'));
+const ContactoPage = lazy(() => import('./pages/ContactoPage'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const ReportesPage = lazy(() => import('./pages/ReportesPage'));
+const PiezasPage = lazy(() => import('./pages/PiezasPage'));
 
 function App() {
   const [loggedUser, setLoggedUser] = useState(null);
   const [currentPage, setCurrentPage] = useState('home');
+  const [loading, setLoading] = useState(true);
 
   // Verificar sesión al cargar
   useEffect(() => {
@@ -27,6 +32,11 @@ function App() {
         }
       } catch (error) {
         console.error('Error al verificar sesión:', error);
+        // Limpiar sesión corrupta
+        sessionStorage.removeItem('session');
+        localStorage.removeItem('rememberSession');
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -57,110 +67,137 @@ function App() {
   };
 
   const renderPage = () => {
-    switch(currentPage) {
-      case 'home':
-        if (loggedUser) {
+    if (loading) {
+      return (
+        <div className="d-flex justify-content-center align-items-center vh-100">
+          <Spinner animation="border" variant="primary" />
+        </div>
+      );
+    }
+
+    try {
+      switch(currentPage) {
+        case 'home':
+          if (loggedUser) {
+            return (
+              <GaleriaPage 
+                user={loggedUser}
+                onLogout={handleLogout}
+                goToHome={() => navigateTo('galeria')}
+                goToContacto={() => navigateTo('contacto')}
+                goToReportes={() => navigateTo('reportes')}
+                goToAdmin={() => navigateTo('admin')}
+                goToPiezas={() => navigateTo('piezas')}
+              />
+            );
+          }
+          return (
+            <HomePage 
+              setLoggedUser={handleLogin}
+              goToContacto={() => navigateTo('contacto')}
+            />
+          );
+        
+        case 'galeria':
           return (
             <GaleriaPage 
               user={loggedUser}
               onLogout={handleLogout}
-              goToHome={() => navigateTo('galeria')}
+              goToHome={() => navigateTo(loggedUser ? 'galeria' : 'home')}
               goToContacto={() => navigateTo('contacto')}
               goToReportes={() => navigateTo('reportes')}
               goToAdmin={() => navigateTo('admin')}
               goToPiezas={() => navigateTo('piezas')}
             />
           );
-        }
-        return (
-          <HomePage 
-            setLoggedUser={handleLogin}
-            goToContacto={() => navigateTo('contacto')}
-          />
-        );
-      
-      case 'galeria':
-        return (
-          <GaleriaPage 
-            user={loggedUser}
-            onLogout={handleLogout}
-            goToHome={() => navigateTo(loggedUser ? 'galeria' : 'home')}
-            goToContacto={() => navigateTo('contacto')}
-            goToReportes={() => navigateTo('reportes')}
-            goToAdmin={() => navigateTo('admin')}
-            goToPiezas={() => navigateTo('piezas')}
-          />
-        );
-      
-      case 'contacto':
-        return (
-          <ContactoPage 
-            goToHome={() => navigateTo(loggedUser ? 'galeria' : 'home')}
-            goToGaleria={() => navigateTo('galeria')}
-            isLoggedIn={!!loggedUser}
-            user={loggedUser}
-            onLogout={handleLogout}
-            goToReportes={() => navigateTo('reportes')}
-            goToAdmin={() => navigateTo('admin')}
-            goToPiezas={() => navigateTo('piezas')}
-          />
-        );
-      
-      case 'admin':
-        if (!loggedUser || (loggedUser.rol !== 'admin' && loggedUser.rol !== 'empleado')) {
-          navigateTo('galeria');
-          return null;
-        }
-        return (
-          <AdminDashboard
-            user={loggedUser}
-            onLogout={handleLogout}
-            goToHome={() => navigateTo('home')}
-            goToGaleria={() => navigateTo('galeria')}
-            goToReportes={() => navigateTo('reportes')}
-          />
-        );
+        
+        case 'contacto':
+          return (
+            <ContactoPage 
+              goToHome={() => navigateTo(loggedUser ? 'galeria' : 'home')}
+              goToGaleria={() => navigateTo('galeria')}
+              isLoggedIn={!!loggedUser}
+              user={loggedUser}
+              onLogout={handleLogout}
+              goToReportes={() => navigateTo('reportes')}
+              goToAdmin={() => navigateTo('admin')}
+              goToPiezas={() => navigateTo('piezas')}
+            />
+          );
+        
+        case 'admin':
+          if (!loggedUser || (loggedUser.rol !== 'admin' && loggedUser.rol !== 'empleado')) {
+            navigateTo('galeria');
+            return null;
+          }
+          return (
+            <AdminDashboard
+              user={loggedUser}
+              onLogout={handleLogout}
+              goToHome={() => navigateTo('home')}
+              goToGaleria={() => navigateTo('galeria')}
+              goToReportes={() => navigateTo('reportes')}
+            />
+          );
 
-      case 'reportes':
-        if (!loggedUser || (loggedUser.rol !== 'admin' && loggedUser.rol !== 'empleado')) {
-          navigateTo('galeria');
-          return null;
-        }
-        return (
-          <ReportesPage
-            user={loggedUser}
-            goBack={() => navigateTo('galeria')}
-            goToHome={() => navigateTo('home')}
-            onLogout={handleLogout}
-          />
-        );
+        case 'reportes':
+          if (!loggedUser || (loggedUser.rol !== 'admin' && loggedUser.rol !== 'empleado')) {
+            navigateTo('galeria');
+            return null;
+          }
+          return (
+            <ReportesPage
+              user={loggedUser}
+              goBack={() => navigateTo('galeria')}
+              goToHome={() => navigateTo('home')}
+              onLogout={handleLogout}
+            />
+          );
 
-      case 'piezas':
-        if (!loggedUser) {
-          navigateTo('home');
-          return null;
-        }
-        return (
-          <PiezasPage
-            user={loggedUser}
-            goBack={() => navigateTo('galeria')}
-          />
-        );
+        case 'piezas':
+          if (!loggedUser) {
+            navigateTo('home');
+            return null;
+          }
+          return (
+            <PiezasPage
+              user={loggedUser}
+              goBack={() => navigateTo('galeria')}
+            />
+          );
 
-      default:
-        return (
-          <HomePage
-            setLoggedUser={handleLogin}
-            goToContacto={() => navigateTo('contacto')}
-          />
-        );
+        default:
+          return (
+            <HomePage
+              setLoggedUser={handleLogin}
+              goToContacto={() => navigateTo('contacto')}
+            />
+          );
+      }
+    } catch (error) {
+      console.error('Error al renderizar página:', error);
+      return (
+        <div className="container text-center py-5">
+          <h2>Error al cargar la página</h2>
+          <p>{error.message}</p>
+          <button className="btn btn-primary" onClick={() => window.location.reload()}>
+            Recargar Página
+          </button>
+        </div>
+      );
     }
   };
 
   return (
-    <div className="App">
-      {renderPage()}
-    </div>
+    <Suspense fallback={
+      <div className="d-flex justify-content-center align-items-center vh-100">
+        <Spinner animation="border" variant="primary" />
+      </div>
+    }>
+      <div className="App">
+        {renderPage()}
+      </div>
+    </Suspense>
   );
 }
 
