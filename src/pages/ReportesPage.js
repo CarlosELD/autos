@@ -21,7 +21,7 @@ const ReportesPage = ({ user, goBack, goToHome, onLogout }) => {
       const ventasData = JSON.parse(localStorage.getItem('ventas')) || [];
       const usuariosData = JSON.parse(localStorage.getItem('users')) || [];
       const piezasData = JSON.parse(localStorage.getItem('piezas')) || [];
-      const ventasPiezasData = JSON.parse(localStorage.getItem('ventasPiezas')) || [];
+      const ventasPiezasData = JSON.parse(localStorage.getItem('ventas_piezas')) || [];
 
       setVentas(ventasData);
       setUsuarios(usuariosData);
