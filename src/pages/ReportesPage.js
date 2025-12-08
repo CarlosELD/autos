@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Table, Button, Tabs, Tab } from 'react-bootstrap';
-import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 import ExportExcel from '../components/ExportExcel';
 import NavbarUser from '../components/NavbarUser';
 import * as XLSX from 'xlsx';
@@ -11,6 +10,7 @@ const ReportesPage = ({ user, goBack, goToHome, onLogout }) => {
   const [piezas, setPiezas] = useState([]);
   const [ventasPiezas, setVentasPiezas] = useState([]);
   const [activeTab, setActiveTab] = useState('empleados');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     cargarDatos();
@@ -21,7 +21,7 @@ const ReportesPage = ({ user, goBack, goToHome, onLogout }) => {
       const ventasData = JSON.parse(localStorage.getItem('ventas')) || [];
       const usuariosData = JSON.parse(localStorage.getItem('users')) || [];
       const piezasData = JSON.parse(localStorage.getItem('piezas')) || [];
-      const ventasPiezasData = JSON.parse(localStorage.getItem('ventas_piezas')) || [];
+      const ventasPiezasData = JSON.parse(localStorage.getItem('ventasPiezas')) || [];
 
       setVentas(ventasData);
       setUsuarios(usuariosData);
@@ -29,6 +29,8 @@ const ReportesPage = ({ user, goBack, goToHome, onLogout }) => {
       setVentasPiezas(ventasPiezasData);
     } catch (error) {
       console.error('Error al cargar datos:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -82,8 +84,12 @@ const ReportesPage = ({ user, goBack, goToHome, onLogout }) => {
     const ventasPorMes = meses.map((mes, index) => {
       const ventasMes = ventas.filter(venta => {
         if (!venta.fecha) return false;
-        const fecha = new Date(venta.fecha);
-        return fecha.getMonth() === index;
+        try {
+          const fecha = new Date(venta.fecha);
+          return fecha.getMonth() === index;
+        } catch {
+          return false;
+        }
       });
 
       const total = ventasMes.reduce((sum, venta) => sum + (parseFloat(venta.precio) || 0), 0);
@@ -91,8 +97,7 @@ const ReportesPage = ({ user, goBack, goToHome, onLogout }) => {
       return {
         mes,
         cantidad: ventasMes.length,
-        total: total,
-        color: `hsl(${index * 30}, 70%, 50%)`
+        total: total
       };
     });
 
@@ -110,7 +115,11 @@ const ReportesPage = ({ user, goBack, goToHome, onLogout }) => {
     const mesActual = hoy.getMonth();
     const ventasMesActual = ventasCompletadas.filter(v => {
       if (!v.fecha) return false;
-      return new Date(v.fecha).getMonth() === mesActual;
+      try {
+        return new Date(v.fecha).getMonth() === mesActual;
+      } catch {
+        return false;
+      }
     });
     const ingresosMesActual = ventasMesActual.reduce((sum, v) => sum + (parseFloat(v.precio) || 0), 0);
 
@@ -122,9 +131,6 @@ const ReportesPage = ({ user, goBack, goToHome, onLogout }) => {
       ingresosMesActual
     };
   };
-
-  // COLORS PARA GRÁFICAS
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#8DD1E1', '#A4DE6C', '#D0ED57'];
 
   // FUNCIONES DE EXPORTACIÓN
   const exportarEmpleadosExcel = () => {
@@ -169,10 +175,43 @@ const ReportesPage = ({ user, goBack, goToHome, onLogout }) => {
     XLSX.writeFile(wb, 'ventas_anuales.xlsx');
   };
 
+  if (loading) {
+    return (
+      <div className="d-flex justify-content-center align-items-center vh-100">
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Cargando...</span>
+        </div>
+      </div>
+    );
+  }
+
   const empleadosTop = calcularEmpleadosTop();
   const piezasTop = calcularPiezasTop();
   const ventasAnuales = calcularVentasAnuales();
   const estadisticas = calcularEstadisticas();
+
+  // Función para crear una barra de progreso simple para visualización
+  const ProgressBar = ({ value, max = 100, color = 'primary', label }) => {
+    const percentage = (value / max) * 100;
+    return (
+      <div className="mb-3">
+        <div className="d-flex justify-content-between mb-1">
+          <small>{label}</small>
+          <small>{value}</small>
+        </div>
+        <div className="progress" style={{ height: '10px' }}>
+          <div 
+            className={`progress-bar bg-${color}`} 
+            role="progressbar" 
+            style={{ width: `${Math.min(percentage, 100)}%` }}
+            aria-valuenow={percentage}
+            aria-valuemin="0" 
+            aria-valuemax="100"
+          ></div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <>
@@ -205,6 +244,7 @@ const ReportesPage = ({ user, goBack, goToHome, onLogout }) => {
               <Card.Body className="bg-primary text-white rounded">
                 <h5 className="card-title">Ventas Totales</h5>
                 <h3>{estadisticas.totalVentas}</h3>
+                <small className="opacity-75">Vehículos vendidos</small>
               </Card.Body>
             </Card>
           </Col>
@@ -213,6 +253,7 @@ const ReportesPage = ({ user, goBack, goToHome, onLogout }) => {
               <Card.Body className="bg-success text-white rounded">
                 <h5 className="card-title">Ingresos Totales</h5>
                 <h3>${estadisticas.totalIngresos.toLocaleString()}</h3>
+                <small className="opacity-75">Total en ventas</small>
               </Card.Body>
             </Card>
           </Col>
@@ -220,7 +261,8 @@ const ReportesPage = ({ user, goBack, goToHome, onLogout }) => {
             <Card className="border-0 shadow-sm">
               <Card.Body className="bg-warning text-white rounded">
                 <h5 className="card-title">Promedio por Venta</h5>
-                <h3>${estadisticas.promedioVenta.toLocaleString()}</h3>
+                <h3>${estadisticas.promedioVenta.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+                <small className="opacity-75">Promedio por transacción</small>
               </Card.Body>
             </Card>
           </Col>
@@ -229,6 +271,7 @@ const ReportesPage = ({ user, goBack, goToHome, onLogout }) => {
               <Card.Body className="bg-info text-white rounded">
                 <h5 className="card-title">Ventas Este Mes</h5>
                 <h3>{estadisticas.ventasMesActual}</h3>
+                <small className="opacity-75">${estadisticas.ingresosMesActual.toLocaleString()}</small>
               </Card.Body>
             </Card>
           </Col>
@@ -244,25 +287,37 @@ const ReportesPage = ({ user, goBack, goToHome, onLogout }) => {
             <Card className="border-0 shadow-sm mt-3">
               <Card.Header className="bg-primary text-white d-flex justify-content-between align-items-center">
                 <h5 className="mb-0">Top 10 Empleados con Más Ventas</h5>
-                <Button variant="light" size="sm" onClick={exportarEmpleadosExcel}>
-                  <i className="bi bi-download me-2"></i>
-                  Exportar Excel
-                </Button>
+                <div>
+                  <Button variant="light" size="sm" onClick={exportarEmpleadosExcel} className="me-2">
+                    <i className="bi bi-download me-1"></i>
+                    Excel
+                  </Button>
+                  <ExportExcel
+                    data={empleadosTop}
+                    filename="empleados_top"
+                    sheetName="Empleados"
+                    buttonText="Exportar"
+                    buttonVariant="light"
+                  />
+                </div>
               </Card.Header>
               <Card.Body>
                 <Row>
                   <Col md={6}>
-                    <div style={{ width: '100%', height: 400 }}>
-                      <ResponsiveContainer>
-                        <BarChart data={empleadosTop}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="nombre" />
-                          <YAxis />
-                          <Tooltip />
-                          <Legend />
-                          <Bar dataKey="ventas" name="Ventas Realizadas" fill="#8884d8" />
-                        </BarChart>
-                      </ResponsiveContainer>
+                    <div className="p-3 border rounded">
+                      <h6 className="mb-3">Ventas por Empleado</h6>
+                      {empleadosTop.map((empleado, index) => {
+                        const maxVentas = Math.max(...empleadosTop.map(e => e.ventas));
+                        return (
+                          <ProgressBar
+                            key={index}
+                            value={empleado.ventas}
+                            max={maxVentas}
+                            color={index === 0 ? 'success' : index === 1 ? 'warning' : index === 2 ? 'info' : 'primary'}
+                            label={`${index + 1}. ${empleado.nombre}`}
+                          />
+                        );
+                      })}
                     </div>
                   </Col>
                   <Col md={6}>
@@ -280,11 +335,24 @@ const ReportesPage = ({ user, goBack, goToHome, onLogout }) => {
                         <tbody>
                           {empleadosTop.map((empleado, index) => (
                             <tr key={index}>
-                              <td>{index + 1}</td>
-                              <td>{empleado.nombre}</td>
-                              <td>{empleado.ventas}</td>
+                              <td>
+                                <span className={`badge ${index === 0 ? 'bg-success' : index === 1 ? 'bg-warning' : index === 2 ? 'bg-info' : 'bg-secondary'}`}>
+                                  {index + 1}
+                                </span>
+                              </td>
+                              <td>
+                                <strong>{empleado.nombre}</strong>
+                                {index === 0 && <span className="badge bg-success ms-2">Top 1</span>}
+                              </td>
+                              <td>
+                                <span className="badge bg-primary">{empleado.ventas}</span>
+                              </td>
                               <td>${empleado.totalVentas.toLocaleString()}</td>
-                              <td>${empleado.comisionTotal.toLocaleString()}</td>
+                              <td>
+                                <span className="badge bg-warning">
+                                  ${empleado.comisionTotal.toLocaleString()}
+                                </span>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -300,35 +368,37 @@ const ReportesPage = ({ user, goBack, goToHome, onLogout }) => {
             <Card className="border-0 shadow-sm mt-3">
               <Card.Header className="bg-success text-white d-flex justify-content-between align-items-center">
                 <h5 className="mb-0">Top 10 Piezas Más Vendidas</h5>
-                <Button variant="light" size="sm" onClick={exportarPiezasExcel}>
-                  <i className="bi bi-download me-2"></i>
-                  Exportar Excel
-                </Button>
+                <div>
+                  <Button variant="light" size="sm" onClick={exportarPiezasExcel} className="me-2">
+                    <i className="bi bi-download me-1"></i>
+                    Excel
+                  </Button>
+                  <ExportExcel
+                    data={piezasTop}
+                    filename="piezas_top"
+                    sheetName="Piezas"
+                    buttonText="Exportar"
+                    buttonVariant="light"
+                  />
+                </div>
               </Card.Header>
               <Card.Body>
                 <Row>
                   <Col md={6}>
-                    <div style={{ width: '100%', height: 400 }}>
-                      <ResponsiveContainer>
-                        <PieChart>
-                          <Pie
-                            data={piezasTop}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={(entry) => `${entry.nombre}: ${entry.cantidad}`}
-                            outerRadius={150}
-                            fill="#8884d8"
-                            dataKey="cantidad"
-                          >
-                            {piezasTop.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip />
-                          <Legend />
-                        </PieChart>
-                      </ResponsiveContainer>
+                    <div className="p-3 border rounded">
+                      <h6 className="mb-3">Distribución de Ventas</h6>
+                      {piezasTop.map((pieza, index) => {
+                        const maxCantidad = Math.max(...piezasTop.map(p => p.cantidad));
+                        return (
+                          <ProgressBar
+                            key={index}
+                            value={pieza.cantidad}
+                            max={maxCantidad}
+                            color={index === 0 ? 'success' : index === 1 ? 'warning' : index === 2 ? 'info' : 'primary'}
+                            label={`${index + 1}. ${pieza.nombre}`}
+                          />
+                        );
+                      })}
                     </div>
                   </Col>
                   <Col md={6}>
@@ -340,17 +410,35 @@ const ReportesPage = ({ user, goBack, goToHome, onLogout }) => {
                             <th>Pieza</th>
                             <th>Cantidad Vendida</th>
                             <th>Total Ventas</th>
+                            <th>Promedio por Unidad</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {piezasTop.map((pieza, index) => (
-                            <tr key={index}>
-                              <td>{index + 1}</td>
-                              <td>{pieza.nombre}</td>
-                              <td>{pieza.cantidad}</td>
-                              <td>${pieza.total.toLocaleString()}</td>
-                            </tr>
-                          ))}
+                          {piezasTop.map((pieza, index) => {
+                            const promedio = pieza.cantidad > 0 ? pieza.total / pieza.cantidad : 0;
+                            return (
+                              <tr key={index}>
+                                <td>
+                                  <span className={`badge ${index === 0 ? 'bg-success' : index === 1 ? 'bg-warning' : index === 2 ? 'bg-info' : 'bg-secondary'}`}>
+                                    {index + 1}
+                                  </span>
+                                </td>
+                                <td>
+                                  <strong>{pieza.nombre}</strong>
+                                  {index === 0 && <span className="badge bg-success ms-2">Más Vendida</span>}
+                                </td>
+                                <td>
+                                  <span className="badge bg-primary">{pieza.cantidad}</span>
+                                </td>
+                                <td>${pieza.total.toLocaleString()}</td>
+                                <td>
+                                  <span className="badge bg-info">
+                                    ${promedio.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </Table>
                     </div>
@@ -364,26 +452,37 @@ const ReportesPage = ({ user, goBack, goToHome, onLogout }) => {
             <Card className="border-0 shadow-sm mt-3">
               <Card.Header className="bg-warning text-white d-flex justify-content-between align-items-center">
                 <h5 className="mb-0">Ventas del Año por Mes</h5>
-                <Button variant="light" size="sm" onClick={exportarVentasAnualesExcel}>
-                  <i className="bi bi-download me-2"></i>
-                  Exportar Excel
-                </Button>
+                <div>
+                  <Button variant="light" size="sm" onClick={exportarVentasAnualesExcel} className="me-2">
+                    <i className="bi bi-download me-1"></i>
+                    Excel
+                  </Button>
+                  <ExportExcel
+                    data={ventasAnuales}
+                    filename="ventas_anuales"
+                    sheetName="Ventas"
+                    buttonText="Exportar"
+                    buttonVariant="light"
+                  />
+                </div>
               </Card.Header>
               <Card.Body>
                 <Row>
                   <Col md={6}>
-                    <div style={{ width: '100%', height: 400 }}>
-                      <ResponsiveContainer>
-                        <LineChart data={ventasAnuales}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="mes" />
-                          <YAxis />
-                          <Tooltip />
-                          <Legend />
-                          <Line type="monotone" dataKey="total" stroke="#8884d8" activeDot={{ r: 8 }} />
-                          <Line type="monotone" dataKey="cantidad" stroke="#82ca9d" />
-                        </LineChart>
-                      </ResponsiveContainer>
+                    <div className="p-3 border rounded">
+                      <h6 className="mb-3">Ventas Mensuales</h6>
+                      {ventasAnuales.map((mes, index) => {
+                        const maxTotal = Math.max(...ventasAnuales.map(v => v.total));
+                        return (
+                          <ProgressBar
+                            key={index}
+                            value={mes.total}
+                            max={maxTotal}
+                            color={mes.total > 0 ? 'success' : 'secondary'}
+                            label={`${mes.mes} - ${mes.cantidad} ventas`}
+                          />
+                        );
+                      })}
                     </div>
                   </Col>
                   <Col md={6}>
@@ -394,16 +493,29 @@ const ReportesPage = ({ user, goBack, goToHome, onLogout }) => {
                             <th>Mes</th>
                             <th>Cantidad de Ventas</th>
                             <th>Total Vendido</th>
+                            <th>Promedio por Venta</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {ventasAnuales.map((mes, index) => (
-                            <tr key={index}>
-                              <td>{mes.mes}</td>
-                              <td>{mes.cantidad}</td>
-                              <td>${mes.total.toLocaleString()}</td>
-                            </tr>
-                          ))}
+                          {ventasAnuales.map((mes, index) => {
+                            const promedio = mes.cantidad > 0 ? mes.total / mes.cantidad : 0;
+                            return (
+                              <tr key={index}>
+                                <td>
+                                  <strong>{mes.mes}</strong>
+                                </td>
+                                <td>
+                                  <span className="badge bg-primary">{mes.cantidad}</span>
+                                </td>
+                                <td>${mes.total.toLocaleString()}</td>
+                                <td>
+                                  <span className="badge bg-info">
+                                    ${promedio.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </Table>
                     </div>
