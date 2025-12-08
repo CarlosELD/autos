@@ -513,6 +513,120 @@ export default function CrudUsuarios({ user }) {
           </Button>
         </Modal.Footer>
       </Modal>
+      {/* Modal para agregar usuario */}
+      <Modal
+        show={showAdd}
+        onHide={() => handleAttemptClose("add")}
+        backdrop="static"
+        keyboard={false}
+        size="lg"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Nuevo Usuario</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Nombre *</Form.Label>
+                  <Form.Control
+                    value={formData.nombre}
+                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                    isInvalid={!!errors.nombre}
+                  />
+                  <Form.Control.Feedback type="invalid">{errors.nombre}</Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Usuario *</Form.Label>
+                  <Form.Control
+                    value={formData.usuario}
+                    onChange={(e) => setFormData({ ...formData, usuario: e.target.value })}
+                    isInvalid={!!errors.usuario}
+                  />
+                  <Form.Control.Feedback type="invalid">{errors.usuario}</Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+            </Row>
+
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Correo *</Form.Label>
+                  <Form.Control
+                    type="email"
+                    value={formData.correo}
+                    onChange={(e) => setFormData({ ...formData, correo: e.target.value })}
+                    isInvalid={!!errors.correo}
+                  />
+                  <Form.Control.Feedback type="invalid">{errors.correo}</Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Teléfono *</Form.Label>
+                  <Form.Control
+                    value={formData.telefono}
+                    onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+                    isInvalid={!!errors.telefono}
+                  />
+                  <Form.Control.Feedback type="invalid">{errors.telefono}</Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+            </Row>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Dirección *</Form.Label>
+              <Form.Control
+                value={formData.direccion}
+                onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
+                isInvalid={!!errors.direccion}
+              />
+              <Form.Control.Feedback type="invalid">{errors.direccion}</Form.Control.Feedback>
+            </Form.Group>
+
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Contraseña *</Form.Label>
+                  <Form.Control
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    isInvalid={!!errors.password}
+                  />
+                  <Form.Control.Feedback type="invalid">{errors.password}</Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Rol *</Form.Label>
+                  <Form.Select
+                    value={formData.rol}
+                    onChange={(e) => setFormData({ ...formData, rol: e.target.value })}
+                    isInvalid={!!errors.rol}
+                  >
+                    <option value="empleado">Empleado</option>
+                    <option value="admin">Administrador</option>
+                    <option value="cliente">Cliente</option>
+                  </Form.Select>
+                  <Form.Control.Feedback type="invalid">{errors.rol}</Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+            </Row>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => handleAttemptClose("add")}>
+            Cancelar
+          </Button>
+          <Button variant="primary" onClick={handleAddUser}>
+            Crear Usuario
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 }

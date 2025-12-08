@@ -108,55 +108,75 @@ export function initializeLocalStorage() {
     localStorage.setItem("contactos", JSON.stringify(contactos));
   }
 
-  let ventasPiezas = JSON.parse(localStorage.getItem("ventasPiezas"));
-  if (!ventasPiezas || ventasPiezas.length === 0) {
-    ventasPiezas = [
+let piezas = JSON.parse(localStorage.getItem("piezas"));
+  if (!piezas || piezas.length === 0) {
+    piezas = [
       {
         id: 1,
-        piezaId: 1,
-        nombre: "Filtro de aceite",
-        cantidad: 10,
-        total: 500,
-        fecha: "2024-01-15",
-        cliente: "Taller Mecánico Central"
+        nombre: 'Filtro de aceite',
+        descripcion: 'Filtro de aceite para motor V8',
+        categoria: 'Motor',
+        stock: 50,
+        precio: 50,
+        proveedor: 'AutoParts SA',
+        minimoStock: 10,
+        ubicacion: 'Almacén A'
       },
       {
         id: 2,
-        piezaId: 2,
-        nombre: "Pastillas de freno",
-        cantidad: 8,
-        total: 1200,
-        fecha: "2024-02-20",
-        cliente: "Auto Servicio Express"
+        nombre: 'Pastillas de freno',
+        descripcion: 'Pastillas de freno delanteras',
+        categoria: 'Frenos',
+        stock: 30,
+        precio: 150,
+        proveedor: 'BrakeTech',
+        minimoStock: 5,
+        ubicacion: 'Almacén B'
+      }
+    ];
+    localStorage.setItem("piezas", JSON.stringify(piezas));
+  }
+  
+  let autosGaleria = JSON.parse(localStorage.getItem("autos_galeria"));
+  if (!autosGaleria || autosGaleria.length === 0) {
+    autosGaleria = [
+      {
+        id: 1,
+        name: 'Ford Mustang Shelby GT 500',
+        price: '125000',
+        precioNumerico: 125000
+      },
+      {
+        id: 2,
+        name: 'BMW M1',
+        price: '750000',
+        precioNumerico: 750000
       },
       {
         id: 3,
-        piezaId: 3,
-        nombre: "Batería",
-        cantidad: 5,
-        total: 2500,
-        fecha: "2024-03-10",
-        cliente: "Taller Eléctrico"
+        name: 'Chevrolet Camaro Z28',
+        price: '95000',
+        precioNumerico: 95000
       },
       {
         id: 4,
-        piezaId: 4,
-        nombre: "Amortiguadores",
-        cantidad: 4,
-        total: 3200,
-        fecha: "2024-04-05",
-        cliente: "Suspensión Profesional"
+        name: 'Datsun 240Z',
+        price: '65000',
+        precioNumerico: 65000
       },
       {
         id: 5,
-        piezaId: 5,
-        nombre: "Aceite de motor",
-        cantidad: 20,
-        total: 800,
-        fecha: "2024-05-12",
-        cliente: "Lubricantes SA"
+        name: 'Ford Bronco',
+        price: '70000',
+        precioNumerico: 70000
+      },
+      {
+        id: 6,
+        name: 'Mercedes Clase G',
+        price: '85000',
+        precioNumerico: 85000
       }
     ];
-    localStorage.setItem("ventasPiezas", JSON.stringify(ventasPiezas));
+    localStorage.setItem("autos_galeria", JSON.stringify(autosGaleria));
   }
 }

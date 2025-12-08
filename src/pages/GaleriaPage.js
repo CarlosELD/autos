@@ -5,8 +5,8 @@ import ExportExcel from '../components/ExportExcel';
 import '../styles/galeria.css';
 
 const GaleriaPage = ({
-  user,onLogout,goToHome,goToContacto,
-  goToReportes,goToAdmin,goToPiezas
+  user, onLogout, goToHome, goToContacto,
+  goToReportes, goToAdmin, goToPiezas
 }) => {
   const [cars] = useState([
     {
@@ -156,16 +156,15 @@ const GaleriaPage = ({
   useEffect(() => {
     // Guardar autos en localStorage si no existen
     try {
-      const autosGuardados = JSON.parse(localStorage.getItem('autos_galeria'));
-      if (!autosGuardados || autosGuardados.length === 0) {
-        const autosConId = cars.map((car, index) => ({
-          ...car,
-          id: index + 1,
-          modelo: car.name,
-          precioNumerico: parseFloat(car.price.replace('$', '').replace(',', '')) || 0
-        }));
-        localStorage.setItem('autos_galeria', JSON.stringify(autosConId));
-      }
+      // Guardar autos en localStorage para que estén disponibles en CrudVentas
+      const autosParaVentas = cars.map(car => ({
+        id: car.id,
+        name: car.name,
+        price: car.price,
+        precioNumerico: parseFloat(car.price.replace(/[^0-9.]/g, '')) || 0
+      }));
+
+      localStorage.setItem("autos_galeria", JSON.stringify(autosParaVentas));
     } catch (error) {
       console.error('Error guardando autos:', error);
     }
@@ -174,7 +173,8 @@ const GaleriaPage = ({
       const carItems = document.querySelectorAll('.car-item');
       carItems.forEach((item, index) => {
         item.style.animationDelay = `${index * 200}ms`;
-      });}, 100);
+      });
+    }, 100);
     return () => clearTimeout(timer);
   }, [cars]);
   return (
@@ -278,7 +278,7 @@ const GaleriaPage = ({
             <div className="col-lg-4 col-md-6 mb-4">
               <h5>Classic Motors 70's</h5>
               <p>
-                Tu destino para encontrar los automóviles clásicos más icónicos de los años 70. 
+                Tu destino para encontrar los automóviles clásicos más icónicos de los años 70.
                 Ofrecemos venta y renta de vehículos únicos y bien conservados.
               </p>
               <div className="social-icons">

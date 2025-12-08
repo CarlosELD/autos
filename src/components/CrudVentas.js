@@ -40,13 +40,59 @@ const CrudVentas = ({ user, onClose }) => {
   const cargarDatos = () => {
     try {
       // Cargar ventas
-      const storedVentas = JSON.parse(localStorage.getItem('ventas')) || [];
+      const storedVentas = JSON.parse(localStorage.getItem("ventas")) || [];
       setVentas(storedVentas.filter(v => v && v.id));
 
-      // Cargar autos
-      const storedAutos = JSON.parse(localStorage.getItem('autos_galeria')) ||
-        JSON.parse(localStorage.getItem('autos')) || [];
-      setAutos(storedAutos.filter(a => a && a.id));
+      // Cargar autos de la galería
+      const storedAutos = JSON.parse(localStorage.getItem("autos_galeria")) || [];
+
+      // Si no hay autos en autos_galeria, buscar en otros lugares
+      let autosData = storedAutos;
+      if (autosData.length === 0) {
+        // Intentar cargar de galería del proyecto
+        const galeriaAutos = [
+          {
+            id: 1,
+            name: 'Ford Mustang Shelby GT 500',
+            price: '125000',
+            precioNumerico: 125000
+          },
+          {
+            id: 2,
+            name: 'BMW M1',
+            price: '750000',
+            precioNumerico: 750000
+          },
+          {
+            id: 3,
+            name: 'Chevrolet Camaro Z28',
+            price: '95000',
+            precioNumerico: 95000
+          },
+          {
+            id: 4,
+            name: 'Datsun 240Z',
+            price: '65000',
+            precioNumerico: 65000
+          },
+          {
+            id: 5,
+            name: 'Ford Bronco',
+            price: '70000',
+            precioNumerico: 70000
+          },
+          {
+            id: 6,
+            name: 'Mercedes Clase G',
+            price: '85000',
+            precioNumerico: 85000
+          }
+        ];
+        autosData = galeriaAutos;
+        localStorage.setItem("autos_galeria", JSON.stringify(galeriaAutos));
+      }
+
+      setAutos(autosData.filter(a => a && a.id));
     } catch (error) {
       console.error('Error al cargar datos:', error);
     }
@@ -58,16 +104,30 @@ const CrudVentas = ({ user, onClose }) => {
     const autoSeleccionado = autos.find(a => a.id == autoId);
 
     if (autoSeleccionado) {
-      let precio = autoSeleccionado.price || autoSeleccionado.precio;
-      if (typeof precio === 'string') {
-        // Extraer solo números
-        precio = precio.replace(/[^0-9.]/g, '');
+      let precio = '';
+
+      // Extraer precio numérico de diferentes formatos
+      if (autoSeleccionado.precioNumerico) {
+        precio = autoSeleccionado.precioNumerico.toString();
+      } else if (autoSeleccionado.price) {
+        if (typeof autoSeleccionado.price === 'string') {
+          // Extraer solo números del string
+          precio = autoSeleccionado.price.replace(/[^0-9.]/g, '');
+        } else {
+          precio = autoSeleccionado.price.toString();
+        }
+      } else if (autoSeleccionado.precio) {
+        if (typeof autoSeleccionado.precio === 'string') {
+          precio = autoSeleccionado.precio.replace(/[^0-9.]/g, '');
+        } else {
+          precio = autoSeleccionado.precio.toString();
+        }
       }
 
       setFormData({
         ...formData,
         autoId: autoId,
-        autoNombre: autoSeleccionado.name,
+        autoNombre: autoSeleccionado.name || autoSeleccionado.nombre,
         precio: precio
       });
     } else {
