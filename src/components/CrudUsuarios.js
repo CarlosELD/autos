@@ -84,12 +84,12 @@ export default function CrudUsuarios({ user }) {
     }
 
     // Validación de teléfono
-    if (!formData.telefono.trim()) {
+    if (!formData.telefono.trim() && formData.telefono.length === 10) {
       newErrors.telefono = "El teléfono es obligatorio";
     } else if (!/^[0-9]+$/.test(formData.telefono)) {
       newErrors.telefono = "El teléfono solo debe contener números";
-    } else if (formData.telefono.length < 7) {
-      newErrors.telefono = "El teléfono debe tener al menos 7 dígitos";
+    } else if (formData.telefono.length === 10) {
+      newErrors.telefono = "El teléfono debe tener al menos 10 dígitos";
     }
 
     // Validación de dirección
