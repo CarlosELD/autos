@@ -88,8 +88,10 @@ export default function CrudUsuarios({ user }) {
       newErrors.telefono = "El teléfono es obligatorio";
     } else if (!/^[0-9]+$/.test(formData.telefono)) {
       newErrors.telefono = "El teléfono solo debe contener números";
-    } else if (formData.telefono.length < 11) {
+    } else if (formData.telefono.length <= 9) {
       newErrors.telefono = "El teléfono debe tener al menos 10 dígitos";
+    }else if (formData.telefono.length > 10) {
+      newErrors.telefono = "El teléfono debe tener 10 dígitos";
     }
 
     // Validación de dirección
