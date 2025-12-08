@@ -118,47 +118,62 @@ const PiezasPage = ({ user, goBack }) => {
   const calcularTotal = () => {
     return carrito.reduce((total, item) => total + (item.precio * item.cantidad), 0);
   };
-
+//realizar pedido 
   const realizarPedido = () => {
-    if (carrito.length === 0) {
-      setSuccessMessage('El carrito está vacío');
-      setTimeout(() => setSuccessMessage(''), 3000);
-      return;
-    }
-    
-    // Registrar pedido
-    const pedidos = JSON.parse(localStorage.getItem('pedidos')) || [];
-    const nuevoPedido = {
-      id: Date.now(),
-      usuario: user.usuario,
-      items: carrito,
-      total: calcularTotal(),
-      fecha: new Date().toISOString().split('T')[0],
-      estado: 'pendiente'
-    };
-    
-    pedidos.push(nuevoPedido);
-    localStorage.setItem('pedidos', JSON.stringify(pedidos));
-    
-    // Actualizar stock
-    const nuevasPiezas = piezas.map(pieza => {
-      const itemCarrito = carrito.find(item => item.id === pieza.id);
-      if (itemCarrito) {
-        return { ...pieza, stock: pieza.stock - itemCarrito.cantidad };
-      }
-      return pieza;
-    });
-    
-    setPiezas(nuevasPiezas);
-    localStorage.setItem('piezas', JSON.stringify(nuevasPiezas));
-    
-    // Limpiar carrito
-    setCarrito([]);
-    localStorage.removeItem('carrito');
-    
-    setSuccessMessage('Pedido realizado exitosamente');
+  if (carrito.length === 0) {
+    setSuccessMessage('El carrito está vacío');
     setTimeout(() => setSuccessMessage(''), 3000);
+    return;
+  }
+  
+  // Registrar pedido original
+  const pedidos = JSON.parse(localStorage.getItem('pedidos')) || [];
+  const nuevoPedido = {
+    id: Date.now(),
+    usuario: user.usuario,
+    items: carrito,
+    total: calcularTotal(),
+    fecha: new Date().toISOString().split('T')[0],
+    estado: 'pendiente'
   };
+  
+  pedidos.push(nuevoPedido);
+  localStorage.setItem('pedidos', JSON.stringify(pedidos));
+
+  // REGISTRAR VENTAS PARA REPORTES (NUEVO)
+  const ventasPiezas = JSON.parse(localStorage.getItem("ventas_piezas")) || [];
+
+  carrito.forEach(item => {
+    ventasPiezas.push({
+      id: Date.now() + Math.random(),
+      nombre: item.nombre,
+      cantidad: item.cantidad,
+      total: item.precio * item.cantidad,
+      fecha: new Date().toISOString().split("T")[0]
+    });
+  });
+
+  localStorage.setItem("ventas_piezas", JSON.stringify(ventasPiezas));
+
+  // Actualizar stock
+  const nuevasPiezas = piezas.map(pieza => {
+    const itemCarrito = carrito.find(item => item.id === pieza.id);
+    if (itemCarrito) {
+      return { ...pieza, stock: pieza.stock - itemCarrito.cantidad };
+    }
+    return pieza;
+  });
+
+  setPiezas(nuevasPiezas);
+  localStorage.setItem('piezas', JSON.stringify(nuevasPiezas));
+
+  // Limpiar carrito
+  setCarrito([]);
+  localStorage.removeItem('carrito');
+
+  setSuccessMessage('Pedido realizado exitosamente');
+  setTimeout(() => setSuccessMessage(''), 3000);
+};
 
   return (
     <>
