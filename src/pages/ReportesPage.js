@@ -288,10 +288,6 @@ const ReportesPage = ({ user, goBack, goToHome, onLogout }) => {
               <Card.Header className="bg-primary text-white d-flex justify-content-between align-items-center">
                 <h5 className="mb-0">Top 10 Empleados con Más Ventas</h5>
                 <div>
-                  <Button variant="light" size="sm" onClick={exportarEmpleadosExcel} className="me-2">
-                    <i className="bi bi-download me-1"></i>
-                    Excel
-                  </Button>
                   <ExportExcel
                     data={empleadosTop}
                     filename="empleados_top"
@@ -369,10 +365,6 @@ const ReportesPage = ({ user, goBack, goToHome, onLogout }) => {
               <Card.Header className="bg-success text-white d-flex justify-content-between align-items-center">
                 <h5 className="mb-0">Top 10 Piezas Más Vendidas</h5>
                 <div>
-                  <Button variant="light" size="sm" onClick={exportarPiezasExcel} className="me-2">
-                    <i className="bi bi-download me-1"></i>
-                    Excel
-                  </Button>
                   <ExportExcel
                     data={piezasTop}
                     filename="piezas_top"
